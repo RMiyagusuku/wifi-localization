@@ -15,6 +15,11 @@ install levmarmodule optimization for python
     sudo python setup.py build     # to compile
     sudo python setup.py install   # to install 
 
+Wrappers for ROS  available at
+    
+    https://github.com/RMiyagusuku/ros-wifi-localization
+
+
 ## Tested Platform
 
     Ubuntu 14.04.5
