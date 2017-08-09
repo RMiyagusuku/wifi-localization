@@ -1,9 +1,11 @@
 import GPy
 from util import data_validation 
-from . import likelihood
+from . import likelihood as lh
 import numpy as np
 from .sensormodel import SensorModel
 from ..sampling import sampling
+from util.others import mesh
+import scipy
 
 class GPcore(SensorModel):   
     """
@@ -13,9 +15,9 @@ class GPcore(SensorModel):
 
     data(Optional):
         Dictionary with entries X, Y and Var
-        X:      Location inputs X, numpy array [p,2]
-        Y:      Readings at each position X, numpy array [p,n] or [p,]
-        Var:    Readings variance, numpy array [p,n] or [p,]
+        X:      Location inputs X, numpy array [ndp,2]
+        Y:      Readings at each position X, numpy array [ndp,nap] or [ndp,]
+        Var:    Readings variance, numpy array [ndp,nap] or [ndp,]
         if no args are passed, data is set to None
 
     kwargs
@@ -25,29 +27,54 @@ class GPcore(SensorModel):
     """
     def __init__(self,data,**kwargs):
         super(GPcore,self).__init__()
+        #Main Data
+        self.name = 'GPcore'        
         self.data = data_validation.data_structure(data)
-        self.all_mac_dict = kwargs.pop('all_mac_dict',None)
-        #TODO: add option for 1 dimension 
-        #self.dim = kwargs.get('dim',2)
-        self.likelihood = kwargs.pop('likelihood',likelihood.Gaussian(**kwargs))
-        #raises error if likelihood is not a derived class of Likelihood
-        assert isinstance(self.likelihood,likelihood.Likelihood)
-        self.sampling = kwargs.pop('sampling',sampling.accept_reject_by_regions)
-  
-        self.debug   = kwargs.get('debug',False)
-        self.verbose = kwargs.get('verbose',False)    
-        self.add_noise_var = kwargs.pop('add_noise_var',.0005)
-        self.nsamples= kwargs.get('nsamples',800)
+        self.all_mac_dict   = kwargs.pop('all_mac_dict',None)
+        self.ndp,self.nap   = self.data['Y'].shape  #data points, #access points
+        #check data
+        assert self.data['X'].shape[0]==self.ndp
+        assert self.data['X'].shape[1]==2
+
+        #Likelihood params        
+        self.likelihood     = kwargs.pop('likelihood',lh.Gaussian(**kwargs))
+        #raise error if likelihood is not a derived class of Likelihood
+        assert isinstance(self.likelihood,lh.Likelihood)
+        self.add_noise_var  = kwargs.pop('add_noise_var',.0005)
+
+        #Xtest
+        self.Xtest          = kwargs.pop('Xtest',None) 
+        self.Xtest_num      = kwargs.pop('Xtest_num',75) #num of points for each Xtest dimension
+        self.Xtest_factor   = kwargs.pop('Xtest_factor',.25)  #Xtest = min/max x +- x_factor*span
+
+        if self.Xtest is None:
+            x0   = np.min(self.data['X'][:,0])
+            x1   = np.max(self.data['X'][:,0])
+            xspn = x1-x0
+            self.xmin = x0-self.Xtest_factor*xspn
+            self.xmax = x1+self.Xtest_factor*xspn
+
+            y0   = np.min(self.data['X'][:,1])
+            y1   = np.max(self.data['X'][:,1])
+            yspn = y1-y0
+            self.ymin = y0-self.Xtest_factor*yspn
+            self.ymax = y1+self.Xtest_factor*yspn
+
+            temp_x = np.linspace(self.xmin,self.xmax,self.Xtest_num)
+            temp_y = np.linspace(self.ymin,self.ymax,self.Xtest_num)
+            self.Xtest  = mesh(temp_x,temp_y)
+
+        #Sampling params
+        self.sampling   = kwargs.pop('sampling',sampling.accept_reject_by_regions_map)
+        self.nsamples   = kwargs.get('nsamples',800)
+
+        #Debug params                
+        self.debug      = kwargs.get('debug',False)     
+        self.verbose    = kwargs.get('verbose',False)    
 
         if self.debug:
             print 'class GP init works'
      
-    def jointpdf(self,Xn,Yn,Varn,**kwargs):
-        """
-        Wrapper around likelihood.jointpdf function
-        """
-        return self.likelihood.jointpdf(self,Xn,Yn,Varn,**kwargs)
-
     def save(self,filepath='last_model.p'):
         """
         Pickle current model. 
@@ -81,25 +108,23 @@ class GPcore(SensorModel):
         return True
 
     ####################                Sensor class function               ####################
-    def sample(self,measurements,**kwargs):
+    def sample(self,measurement,**kwargs):
         """
         (Optional) For generative models, given sensor measurements, sample the model 
         """
         #Sample from the joint pdf
         def tmp_fun(x,**kwargs):
-            return self.sensor_update(measurements,x,**kwargs).flatten()
+            return self.jointpdf(x,measurement,**kwargs).flatten()
         
         return self.sampling(tmp_fun,**kwargs)[0]
 
-
-    def sensor_update(self,measurements,particles,**kwargs):
+    
+    def jointpdf(self,Xn,Yn,**kwargs):
         """
         Wrapper around likelihood.jointpdf function
         """
-        Yn   = measurements[0]
-        Varn = measurements[1]
+        return self.likelihood.jointpdf(self,Xn,Yn,**kwargs)
 
-        return self.likelihood.jointpdf(self,particles,Yn,Varn,**kwargs)
 
     ####################          To implement by derived classes          ####################
     def optimize(self,**kwargs):
@@ -116,8 +141,6 @@ class GPcore(SensorModel):
             Points where the pathloss function is calculated
         """
         raise NotImplementedError   
-
-
 
 #################################################################################################
 class GP(GPcore):
