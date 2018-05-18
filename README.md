@@ -6,7 +6,7 @@ Wireless signal strength based localization
 
 clone this git repository and add it to your path:
 
-    git clone git@github.com:RMiyagusuku/wifi-localization.git ~/WifiLocalization
+    git clone https://github.com/RMiyagusuku/wifi-localization.git ~/WifiLocalization
     echo 'export PYTHONPATH=$PYTHONPATH:~/WifiLocalization' >> ~/.bashrc
 
 install levmarmodule optimization for python
