@@ -137,7 +137,8 @@ class Gaussian(Likelihood):
 
         alpha = np.ones(model.nap)
         #reduce confidence of models where signal is zero 
-        alpha[np.where(Yn==0)[1]] *= confidence_zero
+        index = np.where(Yn==0)
+        alpha[index[0]] *= confidence_zero
         #normalize to one
         alpha = alpha/np.sum(alpha) 
         px = np.dot(log_pX,alpha) #log_px*alpha = prod(pX[i]*alpha[i])
