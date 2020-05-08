@@ -4,25 +4,44 @@ Wireless signal strength based localization
 
 ## Installation
 
-clone this git repository and add it to your path:
+### clone this git repository and add it to your path:
 
     git clone https://github.com/RMiyagusuku/wifi-localization.git ~/WifiLocalization
     echo 'export PYTHONPATH=$PYTHONPATH:~/WifiLocalization' >> ~/.bashrc
 
-install levmarmodule optimization for python
+### install levmar as a shared object </br>
+From: https://jaredmales.github.io/mxlib/group__levmar.html
+
+Download the latest levmar from the above link. Currently on 2.6.
+
+Edit the following lines in the Makefile, like so:
+
+    CFLAGS=$(CONFIGFLAGS) $(ARCHFLAGS) -O3 -ffast-math -funroll-loops -Wall -fPIC
+    AR=ar -r
+    RANLIB=ar -s
+    
+once the build is complete, turn liblevmar.a into a shared libary like so:
+    
+    gcc -shared -Wl,-soname,liblevmar.so -o liblevmar.so *.o -rdynamic
+    
+The location of liblevmar.so and levmar.h should be accessible to your compiler. 
+
+I put them in usr/lib and usr/include respectively (you need sudo).
+
+### install levmarmodule optimization for python
 
     cd ~/WifiLocalization/Localization/sensormodel/pathloss/levmarmodule
     sudo python setup.py build     # to compile
     sudo python setup.py install   # to install 
 
-Wrappers for ROS  available at
+## Wrappers for ROS  available at
     
     https://github.com/RMiyagusuku/ros-wifi-localization
 
 
 ## Tested Platform
 
-    Ubuntu 14.04.5
+    Ubuntu 14.04.5, 18.04.4
     Python 2.7
 
 ## Libraries dependencies
@@ -48,6 +67,6 @@ How to generate additional rosbags for testing global localization and the kidna
 
 ## Questions
 
-Please mail directly to miyagusuku at robot.t.u-tokyo.ac.jp
+Please mail directly to miyagusuku at cc.utsunomiya-u.ac.jp
 
 
