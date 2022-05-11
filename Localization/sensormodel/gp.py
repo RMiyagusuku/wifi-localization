@@ -73,7 +73,7 @@ class GPcore(SensorModel):
         self.verbose    = kwargs.get('verbose',False)    
 
         if self.debug:
-            print 'class GP init works'
+            print ('class GP init works')
      
     def save(self,filepath='last_model.p'):
         """
@@ -158,7 +158,7 @@ class GP(GPcore):
             self.gp    = '\n-> Run optimize()'
         
         if self.debug:
-            print 'class GP init works'
+            print('class GP init works')
     
     def optimize(self,**kwargs):
         self.gp = GPy.models.GPRegression(self.data['X'],self.data['Y'],**kwargs)
